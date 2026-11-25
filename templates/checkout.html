@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pedido.css') }}">
+
+{% include "_menu.html" %}
+
+<main class="co-page">
+<div class="co-wrap">
+
+    <a class="co-back" href="{{ url_for('carrito') }}">← Volver al carrito</a>
+    <div class="co-head">
+        <h1>Finalizar pedido</h1>
+        <p>Completa tus datos de envío, realiza la transferencia y sube tu comprobante. Revisaremos tu pago antes de enviar tu pedido.</p>
+    </div>
+
+    <ol class="co-steps" aria-label="Progreso">
+        <li class="co-step active" id="paso1"><b>1</b><span>Envío</span></li>
+        <li class="co-step" id="paso2"><b>2</b><span>Pago</span></li>
+        <li class="co-step" id="paso3"><b>3</b><span>Confirmar</span></li>
+    </ol>
+
+    {% if errores %}
+    <div class="co-alert bad" role="alert">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div><strong>Revisa estos datos:</strong>
+            <ul>{% for e in errores %}<li>{{ e }}</li>{% endfor %}</ul>
+            <small>Por seguridad el navegador no conserva el archivo: vuelve a elegir tu comprobante.</small>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" class="co-grid" id="formPedido" autocomplete="off">
+
+        <div class="co-col">
+
+            <!-- 1. Envío -->
+            <section class="co-card" id="cardEnvio">
+                <div class="co-card-head">
+                    <div class="co-num">1</div>
+                    <div><h2>Datos de envío</h2><small>¿A dónde llevamos tu pedido?</small></div>
+                </div>
+                <div class="co-fields">
+                    <div class="co-field full">
+                        <label for="nombre">Nombre completo</label>
+                        <input type="text" id="nombre" name="nombre" value="{{ datos.get('nombre', '') }}" placeholder="Ej. Ana López Pérez" required>
+                    </div>
+                    <div class="co-field">
+                        <label for="telefono">Teléfono (10 dígitos)</label>
+                        <input type="tel" id="telefono" name="telefono" inputmode="numeric" maxlength="14" value="{{ datos.get('telefono', '') }}" placeholder="993 123 4567" required>
+                    </div>
+                    <div class="co-field">
+                        <label for="direccion">Calle y número</label>
+                        <input type="text" id="direccion" name="direccion" value="{{ datos.get('direccion', '') }}" placeholder="Av. Juárez 123" required>
+                    </div>
+                    <div class="co-field">
+                        <label for="colonia">Colonia</label>
+                        <input type="text" id="colonia" name="colonia" value="{{ datos.get('colonia', '') }}" required>
+                    </div>
+                    <div class="co-field">
+                        <label for="cp">Código postal</label>
+                        <input type="text" id="cp" name="cp" inputmode="numeric" maxlength="5" value="{{ datos.get('cp', '') }}" placeholder="86690" required>
+                    </div>
+                    <div class="co-field">
+                        <label for="ciudad">Ciudad o municipio</label>
+                        <input type="text" id="ciudad" name="ciudad" value="{{ datos.get('ciudad', '') }}" required>
+                    </div>
+                    <div class="co-field">
+                        <label for="estado">Estado</label>
+                        <select id="estado" name="estado" required>
+                            {% for e in estados %}
+                            <option value="{{ e }}" {% if datos.get('estado') == e %}selected{% endif %}>{{ e }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="co-field full">
+                        <label for="referencias">Referencias de entrega <span style="font-weight:400;color:var(--co-soft)">(opcional)</span></label>
+                        <textarea id="referencias" name="referencias" rows="2" placeholder="Ej. casa azul, frente a la tienda">{{ datos.get('referencias', '') }}</textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Pago -->
+            <section class="co-card" id="cardPago">
+                <div class="co-card-head">
+                    <div class="co-num">2</div>
+                    <div><h2>Pago por transferencia</h2><small>Transfiere el total y adjunta tu comprobante</small></div>
+                </div>
+
+                <p class="co-sub">A. Realiza tu transferencia</p>
+                <div class="co-bank">
+                    <div class="co-bank-top"><span class="co-chip"></span><span class="co-bank-name">{{ cuenta['banco']|upper }}</span></div>
+                    <div class="co-row"><div><span>Titular</span><strong>{{ cuenta['titular'] }}</strong></div></div>
+                    <div class="co-row"><div><span>Cuenta</span><strong>{{ cuenta['cuenta'] }}</strong></div><button type="button" class="co-copy" data-copy="{{ cuenta['cuenta'] }}">Copiar</button></div>
+                    <div class="co-row"><div><span>CLABE interbancaria</span><strong>{{ cuenta['clabe'] }}</strong></div><button type="button" class="co-copy" data-copy="{{ cuenta['clabe'] }}">Copiar</button></div>
+                    <div class="co-row big"><div><span>Monto exacto a transferir</span><strong>${{ "{:,.2f}".format(total) }} MXN</strong></div><button type="button" class="co-copy" data-copy="{{ '%.2f'|format(total) }}">Copiar</button></div>
+                    <div class="co-row"><div><span>Concepto sugerido</span><strong id="concepto">FRAG-IA</strong></div><button type="button" class="co-copy" id="copiarConcepto" data-copy="FRAG-IA">Copiar</button></div>
+                </div>
+                <div class="co-hint">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a8707c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span>Transfiere el <strong>monto exacto</strong> desde tu app bancaria y guarda la captura o el PDF del comprobante.</span>
+                </div>
+
+                <p class="co-sub" style="margin-top:26px">B. Sube tu comprobante</p>
+                <label class="co-drop" id="drop" for="comprobante">
+                    <input type="file" id="comprobante" name="comprobante" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" required>
+                    <span class="co-empty">
+                        <span class="co-drop-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+                        <strong>Arrastra tu comprobante aquí</strong>
+                        <small>o haz clic para elegirlo · PDF, JPG, PNG o WEBP · máx. 5 MB</small>
+                    </span>
+                    <span class="co-file">
+                        <span class="co-thumb" id="thumb">PDF</span>
+                        <span class="co-file-info"><strong id="fnombre">archivo</strong><small id="fpeso">Listo para enviar ✓</small></span>
+                        <span class="co-change">Cambiar</span>
+                    </span>
+                </label>
+                <div class="co-file-err" id="ferr" role="alert"></div>
+            </section>
+        </div>
+
+        <!-- Resumen -->
+        <aside class="co-card co-summary">
+            <h3>Tu pedido</h3>
+            {% for i in items %}
+            <div class="co-item">
+                <div class="co-item-img">
+                    {% if i['perfume']['imagen'] %}<img src="{{ url_for('static', filename='img/' + i['perfume']['imagen']) }}" alt="">{% else %}✦{% endif %}
+                </div>
+                <div class="co-item-info"><strong>{{ i['perfume']['nombre'] }}</strong><small>{{ i['cantidad'] }} × ${{ "{:,.2f}".format(i['perfume']['precio']) }}</small></div>
+                <b>${{ "{:,.2f}".format(i['subtotal']) }}</b>
+            </div>
+            {% endfor %}
+            <div class="co-total"><span>Total</span><strong>${{ "{:,.2f}".format(total) }}</strong></div>
+
+            <button type="submit" class="co-btn" id="btnConfirmar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span id="btnTexto">Confirmar pedido</span>
+            </button>
+            <p class="co-falta" id="falta"></p>
+
+            <div class="co-trust">
+                <div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Revisamos tu pago antes de preparar el envío</div>
+                <div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Te avisamos por correo cuando se confirme</div>
+                <div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Tu comprobante solo lo ve el administrador</div>
+            </div>
+        </aside>
+    </form>
+</div>
+</main>
+
+<script>
+(function () {
+    const form = document.getElementById('formPedido');
+    const input = document.getElementById('comprobante');
+    const drop = document.getElementById('drop');
+    const ferr = document.getElementById('ferr');
+    const btn = document.getElementById('btnConfirmar');
+    const falta = document.getElementById('falta');
+    const pasos = [document.getElementById('paso1'), document.getElementById('paso2'), document.getElementById('paso3')];
+    const MAX = 5 * 1024 * 1024, EXT = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+    let archivoOk = false, urlPrevia = null;
+
+    // Copiar datos de la cuenta
+    function copiar(texto, boton) {
+        const listo = () => { const t = boton.textContent; boton.textContent = 'Copiado ✓'; boton.classList.add('ok');
+            setTimeout(() => { boton.textContent = t === 'Copiado ✓' ? 'Copiar' : t; boton.classList.remove('ok'); }, 1500); };
+        if (navigator.clipboard && window.isSecureContext !== false) { navigator.clipboard.writeText(texto).then(listo).catch(() => viejo(texto, listo)); }
+        else { viejo(texto, listo); }
+    }
+    function viejo(texto, cb) { const a = document.createElement('textarea'); a.value = texto; a.style.position = 'fixed'; a.style.opacity = '0';
+        document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (e) {} a.remove(); cb(); }
+    document.querySelectorAll('.co-copy').forEach(b => b.addEventListener('click', () => copiar(b.dataset.copy, b)));
+
+    // Concepto con el nombre del cliente
+    const nombre = document.getElementById('nombre'), concepto = document.getElementById('concepto'), bCon = document.getElementById('copiarConcepto');
+    function actualizarConcepto() { const t = ('FRAG-IA ' + nombre.value.trim()).trim(); concepto.textContent = t; bCon.dataset.copy = t; }
+    nombre.addEventListener('input', actualizarConcepto); actualizarConcepto();
+
+    // Archivo
+    function error(msg) { ferr.textContent = msg; ferr.classList.toggle('show', !!msg); }
+    function peso(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+    function limpiar() { input.value = ''; drop.classList.remove('has-file'); archivoOk = false; if (urlPrevia) { URL.revokeObjectURL(urlPrevia); urlPrevia = null; } }
+    function mostrar(f) {
+        const ext = (f.name.split('.').pop() || '').toLowerCase();
+        if (!EXT.includes(ext)) { limpiar(); error('Formato no válido. Sube un PDF, JPG, PNG o WEBP.'); return refrescar(); }
+        if (f.size > MAX) { limpiar(); error('El archivo pesa ' + peso(f.size) + '. El máximo es 5 MB.'); return refrescar(); }
+        error(''); archivoOk = true; drop.classList.add('has-file');
+        document.getElementById('fnombre').textContent = f.name;
+        document.getElementById('fpeso').textContent = peso(f.size) + ' · listo para enviar ✓';
+        const th = document.getElementById('thumb'); th.innerHTML = '';
+        if (urlPrevia) URL.revokeObjectURL(urlPrevia);
+        if (f.type.startsWith('image/')) { urlPrevia = URL.createObjectURL(f); const im = document.createElement('img'); im.src = urlPrevia; im.alt = ''; th.appendChild(im); }
+        else { th.textContent = ext.toUpperCase(); }
+        refrescar();
+    }
+    input.addEventListener('change', () => { if (input.files[0]) mostrar(input.files[0]); else { limpiar(); refrescar(); } });
+    ['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+    drop.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if (!f) return;
+        try { const dt = new DataTransfer(); dt.items.add(f); input.files = dt.files; } catch (e) {} mostrar(f); });
+
+    // Progreso y botón
+    function envioCompleto() { return [...document.querySelectorAll('#cardEnvio [required]')].every(el => el.value.trim() !== '' && el.checkValidity()); }
+    function refrescar() {
+        const e1 = envioCompleto(), e2 = archivoOk;
+        pasos[0].className = 'co-step ' + (e1 ? 'done' : 'active');
+        pasos[1].className = 'co-step ' + (e1 && e2 ? 'done' : (e1 ? 'active' : ''));
+        pasos[2].className = 'co-step ' + (e1 && e2 ? 'active' : '');
+        pasos[0].querySelector('b').textContent = e1 ? '✓' : '1';
+        pasos[1].querySelector('b').textContent = (e1 && e2) ? '✓' : '2';
+        btn.disabled = !(e1 && e2);
+        falta.textContent = !e1 ? 'Completa tus datos de envío.' : (!e2 ? 'Sube tu comprobante de transferencia para confirmar.' : '');
+    }
+    form.addEventListener('input', refrescar);
+    form.addEventListener('submit', () => { btn.disabled = true; document.getElementById('btnTexto').textContent = 'Enviando tu pedido…'; });
+    refrescar();
+})();
+</script>
+{% endblock %}

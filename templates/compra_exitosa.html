@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pedido.css') }}">
+
+{% include "_menu.html" %}
+
+{% set estado = venta['estado'] %}
+{% set paso = {'Pendiente de pago': 0, 'Comprobante enviado': 1, 'Pago rechazado': 1, 'En proceso': 2, 'En camino': 3, 'Entregado': 4, 'Recibido': 4}.get(estado, 0) %}
+{% set es_transf = venta['metodo_pago'] == 'Transferencia bancaria' %}
+
+<main class="co-page">
+<div class="co-wrap">
+
+    <div class="co-hero">
+        {% if estado == 'Cancelado' or estado == 'Pago rechazado' %}
+            <div class="co-badge {{ 'bad' if estado == 'Cancelado' else 'warn' }}">
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">{% if estado == 'Cancelado' %}<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>{% else %}<line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>{% endif %}</svg>
+            </div>
+        {% else %}
+            <div class="co-badge"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        {% endif %}
+        <div class="co-folio">PEDIDO #{{ '%04d'|format(venta['id']) }}</div>
+        <h1>
+            {% if estado == 'Cancelado' %}Pedido cancelado
+            {% elif estado == 'Pago rechazado' %}Necesitamos otro comprobante
+            {% elif estado == 'Comprobante enviado' %}¡Pedido recibido!
+            {% elif estado == 'Pendiente de pago' %}Falta tu pago
+            {% else %}¡Gracias por tu compra!{% endif %}
+        </h1>
+        <p>
+            {% if estado == 'Comprobante enviado' %}Recibimos tu comprobante y lo estamos revisando. Te avisaremos por correo cuando tu pago quede confirmado.
+            {% elif estado == 'Pago rechazado' %}No pudimos confirmar tu pago{% if venta['motivo_rechazo'] %}: <strong>{{ venta['motivo_rechazo'] }}</strong>{% endif %}. Sube un comprobante correcto para que lo revisemos de nuevo.
+            {% elif estado == 'Pendiente de pago' %}Realiza la transferencia y sube tu comprobante para que podamos revisar tu pago.
+            {% elif estado == 'Cancelado' %}Este pedido fue cancelado y tus perfumes se devolvieron al inventario.
+            {% elif estado == 'En proceso' %}Tu pago está confirmado y ya estamos preparando tu pedido.
+            {% elif estado == 'En camino' %}Tu pedido ya va en camino.
+            {% else %}Tu pedido fue entregado. ¡Esperamos que lo disfrutes!{% endif %}
+        </p>
+    </div>
+
+    {% if estado != 'Cancelado' %}
+    <ol class="co-track {{ 'warn' if estado == 'Pago rechazado' }}" aria-label="Estado del pedido">
+        {% for etapa in ['Pedido recibido', 'Pago en revisión', 'Preparando', 'En camino', 'Entregado'] %}
+        <li class="{{ 'done' if loop.index0 < paso else ('now' if loop.index0 == paso else '') }}"><b>{{ '✓' if loop.index0 < paso else loop.index }}</b>{{ etapa }}</li>
+        {% endfor %}
+    </ol>
+    {% endif %}
+
+    {% if estado in ['Pago rechazado', 'Pendiente de pago'] %}
+    <div class="co-card" style="max-width:760px;margin:0 auto 26px">
+        <div class="co-card-head"><div class="co-num">↑</div><div><h2>Sube tu comprobante</h2><small>Captura de pantalla o PDF · máx. 5 MB</small></div></div>
+        {% if estado == 'Pendiente de pago' %}
+        <div class="co-bank" style="margin-bottom:18px">
+            <div class="co-bank-top"><span class="co-chip"></span><span class="co-bank-name">{{ cuenta['banco']|upper }}</span></div>
+            <div class="co-row"><div><span>Titular</span><strong>{{ cuenta['titular'] }}</strong></div></div>
+            <div class="co-row"><div><span>CLABE</span><strong>{{ cuenta['clabe'] }}</strong></div></div>
+            <div class="co-row big"><div><span>Monto</span><strong>${{ "{:,.2f}".format(venta['total']) }} MXN</strong></div></div>
+            <div class="co-row"><div><span>Concepto</span><strong>Pedido #{{ venta['id'] }}</strong></div></div>
+        </div>
+        {% endif %}
+        <form method="post" action="{{ url_for('subir_comprobante', id=venta['id']) }}" enctype="multipart/form-data" class="co-reup">
+            <input type="file" name="comprobante" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" required>
+            <button type="submit" class="co-btn inline">Enviar comprobante</button>
+        </form>
+        <form method="post" action="{{ url_for('cancelar_pedido', id=venta['id']) }}" onsubmit="return confirm('¿Seguro que quieres cancelar este pedido?');">
+            <button type="submit" class="co-linkbtn">Cancelar este pedido</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="co-two">
+        <section class="co-card co-list">
+            <h3 style="font-family:'Playfair Display',Georgia,serif;font-weight:500;font-size:24px;margin:0 0 14px">Resumen del pedido</h3>
+            {% for d in detalle %}
+            <div class="co-item">
+                <div class="co-item-img">✦</div>
+                <div class="co-item-info"><strong>{{ d['nombre'] }}</strong><small>{{ d['cantidad'] }} × ${{ "{:,.2f}".format(d['precio_unitario']) }}</small></div>
+                <b>${{ "{:,.2f}".format(d['precio_unitario'] * d['cantidad']) }}</b>
+            </div>
+            {% endfor %}
+            <div class="co-total"><span>Total</span><strong>${{ "{:,.2f}".format(venta['total']) }}</strong></div>
+        </section>
+
+        <div class="co-col">
+            <section class="co-card">
+                <h3 style="font-family:'Playfair Display',Georgia,serif;font-weight:500;font-size:22px;margin:0 0 16px">Pago</h3>
+                <dl class="co-kv">
+                    <div><dt>Método</dt><dd>{{ venta['metodo_pago'] or '—' }}</dd></div>
+                    {% if es_transf %}
+                    <div><dt>Estado del pago</dt><dd>
+                        {% if estado == 'Comprobante enviado' %}<span class="co-pill rev">En revisión</span>
+                        {% elif estado == 'Pago rechazado' %}<span class="co-pill bad">Rechazado</span>
+                        {% elif estado == 'Pendiente de pago' %}<span class="co-pill warn">Pendiente</span>
+                        {% elif estado == 'Cancelado' %}<span class="co-pill bad">Cancelado</span>
+                        {% else %}<span class="co-pill ok">Confirmado</span>{% endif %}
+                    </dd></div>
+                    {% endif %}
+                    {% if venta['comprobante'] %}<div><dt>Comprobante</dt><dd><a href="{{ url_for('ver_comprobante', id=venta['id']) }}" target="_blank" rel="noopener">Ver el archivo que enviaste ↗</a></dd></div>{% endif %}
+                </dl>
+            </section>
+            {% if venta['envio_nombre'] %}
+            <section class="co-card">
+                <h3 style="font-family:'Playfair Display',Georgia,serif;font-weight:500;font-size:22px;margin:0 0 16px">Envío</h3>
+                <dl class="co-kv">
+                    <div><dt>Recibe</dt><dd>{{ venta['envio_nombre'] }} · Tel. {{ venta['envio_telefono'] }}</dd></div>
+                    <div><dt>Dirección</dt><dd>{{ venta['envio_direccion'] }}<br>{{ venta['envio_ciudad'] }}, {{ venta['envio_estado'] }}. C.P. {{ venta['envio_cp'] }}</dd></div>
+                    {% if venta['envio_referencias'] %}<div><dt>Referencias</dt><dd>{{ venta['envio_referencias'] }}</dd></div>{% endif %}
+                </dl>
+            </section>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="co-actions">
+        <a class="co-btn inline" href="{{ url_for('mis_pedidos') }}">Ir a mis pedidos</a>
+        <a class="co-btn inline light" href="{{ url_for('catalogo') }}">Seguir comprando</a>
+    </div>
+    <p style="text-align:center;color:var(--co-soft);font-size:12.5px;margin-top:18px">Te enviamos un resumen del pedido a tu correo.</p>
+</div>
+</main>
+{% endblock %}

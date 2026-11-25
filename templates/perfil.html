@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% include '_menu.html' %}
+
+<style>
+    .perfil-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
+    .perfil-grid .panel h2 { font-size: 24px; margin: 0 0 18px; }
+    .perfil-grid label { display: block; font-size: 12px; font-weight: 600; margin: 12px 0 5px; }
+    .perfil-grid input, .perfil-grid select { width: 100%; padding: 12px 14px; }
+    .perfil-grid .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .perfil-grid input[readonly] { background: #f5f0ef; color: var(--muted); }
+    .perfil-grid .btn { margin-top: 18px; }
+    .perfil-stats { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 18px; }
+    .perfil-stats div { background: #faf4f3; border-radius: 6px; padding: 16px; }
+    .perfil-stats small { color: var(--rose); letter-spacing: .1em; font-size: 10px; font-weight: 700; }
+    .perfil-stats strong { display: block; font-size: 22px; margin-top: 8px; }
+    @media (max-width: 800px) { .perfil-grid { grid-template-columns: 1fr; } }
+</style>
+
+<section class="page-heading">
+    <div class="eyebrow">MI CUENTA</div>
+    <h1>Mi <em>perfil.</em></h1>
+    <p>Consulta y actualiza tus datos.</p>
+</section>
+
+<main class="section">
+    <div class="perfil-grid">
+
+        <div class="panel">
+            <h2>Mis datos</h2>
+            <form method="POST">
+                <input type="hidden" name="accion" value="datos">
+                <label for="nombre">Nombre</label>
+                <input type="text" id="nombre" name="nombre" value="{{ usuario['nombre'] }}" required>
+                <label for="correo">Correo</label>
+                <input type="email" id="correo" value="{{ usuario['correo'] }}" readonly>
+                <button type="submit" class="btn">Guardar cambios</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Mis compras</h2>
+            <div class="perfil-stats">
+                <div><small>PEDIDOS REALIZADOS</small><strong>{{ resumen['pedidos'] }}</strong></div>
+            </div>
+            {% if ultimo %}
+                <p>Último pedido: <strong>#{{ '%04d'|format(ultimo['id']) }}</strong> · {{ ultimo['fecha'] }}<br>
+                   Estado: <strong>{{ ultimo['estado'] }}</strong></p>
+                <a class="btn btn-small" href="{{ url_for('mis_pedidos') }}">Ver todos mis pedidos</a>
+            {% else %}
+                <p>Aún no has comprado. <a href="{{ url_for('catalogo') }}">Ver perfumes</a></p>
+            {% endif %}
+        </div>
+
+        <div class="panel">
+            <h2>Dirección de envío</h2>
+            <form method="POST" autocomplete="off">
+                <input type="hidden" name="accion" value="direccion">
+                <label for="telefono">Teléfono (10 dígitos)</label>
+                <input type="tel" id="telefono" name="telefono" inputmode="numeric" maxlength="14"
+                       value="{{ usuario['dir_telefono'] or '' }}" required>
+                <label for="direccion">Calle y número</label>
+                <input type="text" id="direccion" name="direccion" value="{{ usuario['dir_calle'] or '' }}" required>
+                <div class="fila">
+                    <div>
+                        <label for="colonia">Colonia</label>
+                        <input type="text" id="colonia" name="colonia" value="{{ usuario['dir_colonia'] or '' }}" required>
+                    </div>
+                    <div>
+                        <label for="cp">Código postal</label>
+                        <input type="text" id="cp" name="cp" inputmode="numeric" maxlength="5"
+                               value="{{ usuario['dir_cp'] or '' }}" required>
+                    </div>
+                </div>
+                <div class="fila">
+                    <div>
+                        <label for="ciudad">Ciudad o municipio</label>
+                        <input type="text" id="ciudad" name="ciudad" value="{{ usuario['dir_ciudad'] or '' }}" required>
+                    </div>
+                    <div>
+                        <label for="estado">Estado</label>
+                        <select id="estado" name="estado" required>
+                            {% for e in estados %}
+                            <option value="{{ e }}" {% if (usuario['dir_estado'] or 'Tabasco') == e %}selected{% endif %}>{{ e }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <label for="referencias">Referencias de entrega (opcional)</label>
+                <input type="text" id="referencias" name="referencias" value="{{ usuario['dir_referencias'] or '' }}">
+                <button type="submit" class="btn">Guardar dirección</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Cambiar contraseña</h2>
+            <form method="POST" autocomplete="off">
+                <input type="hidden" name="accion" value="contrasena">
+                <label for="actual">Contraseña actual</label>
+                <input type="password" id="actual" name="actual" required>
+                <button type="submit" class="btn">Enviar código al correo</button>
+            </form>
+        </div>
+
+    </div>
+</main>
+{% endblock %}

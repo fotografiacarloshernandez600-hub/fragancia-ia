@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block content %}
+{% include '_menu.html' %}
+
+<style>
+    .estado { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .estado-proceso { background: #fdf3dc; color: #8a6414; }
+    .estado-camino { background: #e3eefb; color: #1f4f8a; }
+    .estado-entregado { background: #e6f4ea; color: #25683a; }
+    .estado-recibido { background: #eee; color: #444; }
+    .estado-pago { background: #fdf3dc; color: #8a6414; }
+    .estado-revision { background: #e3eefb; color: #1f4f8a; }
+    .estado-malo { background: #fbeeee; color: #9b3b3b; }
+    .estado-acciones { margin-top: 8px; }
+</style>
+
+<section class="page-heading">
+    <div class="eyebrow">MI CUENTA</div>
+    <h1>Mis <em>pedidos.</em></h1>
+    <p>Consulta tus compras.</p>
+</section>
+
+<main class="section">
+    <div class="panel table-scroll">
+        <table class="tabla">
+            <thead>
+                <tr><th>Folio</th><th>Fecha</th><th>Total</th><th>Estado</th><th>Detalle</th></tr>
+            </thead>
+            <tbody>
+                {% for v in pedidos %}
+                <tr>
+                    <td>#{{ '%04d'|format(v.id) }}</td>
+                    <td>{{ v.fecha }}</td>
+                    <td>${{ '{:,.2f}'.format(v.total) }}</td>
+                    <td>
+                        {% if v.estado == 'Pendiente de pago' %}
+                            <span class="estado estado-pago">💳 Pendiente de pago</span>
+                            <div class="estado-acciones"><a href="{{ url_for('compra_exitosa', id=v.id) }}">Subir comprobante ↗</a></div>
+                        {% elif v.estado == 'Comprobante enviado' %}
+                            <span class="estado estado-revision">🔎 Comprobante en revisión</span>
+                        {% elif v.estado == 'Pago rechazado' %}
+                            <span class="estado estado-malo">⚠ Pago rechazado</span>
+                            <div class="estado-acciones"><a href="{{ url_for('compra_exitosa', id=v.id) }}">Subir otro comprobante ↗</a></div>
+                        {% elif v.estado == 'Cancelado' %}
+                            <span class="estado estado-malo">✕ Cancelado</span>
+                        {% elif v.estado == 'En camino' %}
+                            <span class="estado estado-camino">🚚 En camino</span>
+                        {% elif v.estado == 'Entregado' %}
+                            <span class="estado estado-entregado">📦 Entregado</span>
+                            <div class="estado-acciones">
+                                <form method="post" action="{{ url_for('pedido_recibido', id=v.id) }}">
+                                    <button class="btn btn-small">Ya lo recibí</button>
+                                </form>
+                            </div>
+                        {% elif v.estado == 'Recibido' %}
+                            <span class="estado estado-recibido">✓ Recibido</span>
+                        {% else %}
+                            <span class="estado estado-proceso">⏳ En proceso</span>
+                        {% endif %}
+                    </td>
+                    <td><a href="{{ url_for('compra_exitosa', id=v.id) }}">Ver compra ↗</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5">Aún no has comprado. <a href="{{ url_for('catalogo') }}">Ver perfumes</a></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</main>
+{% endblock %}

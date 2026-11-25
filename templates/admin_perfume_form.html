@@ -1,0 +1,42 @@
+{% extends "admin_base.html" %}
+
+{% block admin %}
+<h1>{{ 'Editar perfume' if perfume else 'Agregar perfume' }}</h1>
+
+<form method="POST" enctype="multipart/form-data" class="form-admin">
+    <label>Nombre</label>
+    <input type="text" name="nombre" value="{{ perfume['nombre'] if perfume else '' }}" required>
+
+    <label>Marca</label>
+    <input type="text" name="marca" value="{{ perfume['marca'] if perfume and perfume['marca'] else '' }}">
+
+    <label>Categoría</label>
+    <select name="categoria" required>
+        {% for c in categorias %}
+        <option value="{{ c }}" {% if perfume and perfume['categoria'] == c %}selected{% endif %}>
+            {{ c|capitalize }}
+        </option>
+        {% endfor %}
+    </select>
+
+    <label>Precio</label>
+    <input type="number" name="precio" step="0.01" min="0"
+           value="{{ perfume['precio'] if perfume else '' }}" required>
+
+    <label>Stock (unidades disponibles)</label>
+    <input type="number" name="stock" min="0"
+           value="{{ perfume['stock'] if perfume else '' }}" required>
+
+    <label>Foto (JPG, PNG o WEBP, máximo 5 MB)</label>
+    {% if perfume and perfume['imagen'] %}
+        <img class="miniatura grande" src="{{ url_for('static', filename='img/' + perfume['imagen']) }}" alt="">
+        <small>Si eliges otra foto, reemplazará a esta.</small>
+    {% endif %}
+    <input type="file" name="imagen" accept=".jpg,.jpeg,.png,.webp">
+
+    <div class="botones-form">
+        <button type="submit" class="btn">Guardar</button>
+        <a href="{{ url_for('admin_perfumes') }}">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

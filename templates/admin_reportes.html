@@ -1,0 +1,189 @@
+{% extends "admin_base.html" %}
+
+{% block admin %}
+
+<style>
+    .rep .rep-titulo { font-family: 'Playfair Display', Georgia, serif; font-weight: 500; font-size: 30px; margin: 0 0 18px; }
+    .rep .filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+    .rep .filtros a { padding: 8px 14px; border: 1px solid var(--line); border-radius: 20px; font-size: 13px; background: #fff; color: inherit; text-decoration: none; }
+    .rep .filtros a.activo { border-color: var(--rose); background: var(--rose-light); font-weight: 600; }
+    .rep .personalizado { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 22px; font-size: 12px; }
+    .rep .personalizado label { display: block; font-weight: 600; margin-bottom: 4px; }
+    .rep .personalizado input { font: inherit; padding: 8px 10px; border: 1px solid #ded5d3; border-radius: 3px; }
+    .rep .personalizado button { padding: 9px 16px; cursor: pointer; }
+    .rep .barra-rango { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .rep .barra-rango .rango { margin: 0; }
+    .rep .rango { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+    .rep .tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 26px; }
+    .rep .tarjeta { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }
+    .rep .tarjeta small { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+    .rep .tarjeta strong { display: block; font-size: 18px; }
+    .rep .tarjeta span { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .rep h3 { font-family: 'Playfair Display', Georgia, serif; font-weight: 500; font-size: 22px; margin: 30px 0 12px; }
+    .rep .caja { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; overflow-x: auto; }
+    .rep table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .rep th, .rep td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+    .rep td.num, .rep th.num { text-align: right; white-space: nowrap; }
+    .rep .barra-fondo { background: #f3ecea; border-radius: 3px; height: 10px; min-width: 90px; }
+    .rep .barra { background: var(--rose); height: 10px; border-radius: 3px; }
+    .rep .etiqueta { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+    .rep .etiqueta.top { background: #e6f4ea; color: #256b3a; }
+    .rep .etiqueta.low { background: #fbeeee; color: #9b3b3b; }
+    .rep .periodos { display: grid; gap: 6px; }
+    .rep .periodo { display: grid; grid-template-columns: 70px 1fr 270px; gap: 10px; align-items: center; font-size: 12px; }
+    .rep .periodo .valor { text-align: right; white-space: nowrap; }
+    .rep .aviso-costo { background: #fff4dc; border-left: 4px solid #d99a1f; padding: 12px 16px; margin-bottom: 18px; font-size: 14px; line-height: 1.55; }
+    .rep .aviso-est { background: #e6f0fb; border-left-color: #2a6fb0; }
+    .rep .tarjeta-ganancia { border-color: var(--rose); background: var(--rose-light); }
+    .rep .pos { color: #1e7a46; }
+    .rep .neg { color: #a02323; }
+    .rep .vacio { color: var(--muted); font-size: 14px; padding: 8px 0; }
+    .rep .volver { display: inline-block; margin-top: 20px; font-size: 13px; }
+    @media (max-width: 600px) { .rep .periodo { grid-template-columns: 56px 1fr 190px; } }
+</style>
+
+<div class="rep">
+    <h2 class="rep-titulo">Reporte de ventas</h2>
+
+    <div class="filtros">
+        <a href="{{ url_for('admin_reportes', periodo='hoy') }}" class="{{ 'activo' if periodo == 'hoy' }}">Hoy</a>
+        <a href="{{ url_for('admin_reportes', periodo='7d') }}" class="{{ 'activo' if periodo == '7d' }}">Últimos 7 días</a>
+        <a href="{{ url_for('admin_reportes', periodo='30d') }}" class="{{ 'activo' if periodo == '30d' }}">Últimos 30 días</a>
+        <a href="{{ url_for('admin_reportes', periodo='mes') }}" class="{{ 'activo' if periodo == 'mes' }}">Este mes</a>
+        <a href="{{ url_for('admin_reportes', periodo='anio') }}" class="{{ 'activo' if periodo == 'anio' }}">Este año</a>
+        <a href="{{ url_for('admin_reportes', periodo='todo') }}" class="{{ 'activo' if periodo == 'todo' }}">Todo</a>
+    </div>
+
+    <form method="GET" class="personalizado">
+        <input type="hidden" name="periodo" value="personalizado">
+        <div><label for="desde">Desde</label><input type="date" id="desde" name="desde" value="{{ desde }}" required></div>
+        <div><label for="hasta">Hasta</label><input type="date" id="hasta" name="hasta" value="{{ hasta }}" required></div>
+        <button type="submit" class="btn">Ver periodo</button>
+    </form>
+
+    <div class="barra-rango">
+        <p class="rango">Mostrando del <strong>{{ desde }}</strong> al <strong>{{ hasta }}</strong></p>
+        <a class="btn" href="{{ url_for('admin_reportes_pdf', periodo=periodo, desde=desde, hasta=hasta) }}">Descargar PDF</a>
+    </div>
+
+    {% if sin_costo_nombres %}
+    <div class="aviso-costo">
+        <strong>Falta el costo de algunos perfumes.</strong> Se vendieron sin costo registrado, por eso su ganancia sale más alta de lo real:
+        {{ sin_costo_nombres|join(', ') }}. <a href="{{ url_for('admin_inventario') }}">Capturar costos →</a>
+    </div>
+    {% endif %}
+
+    {% if estimado_nombres %}
+    <div class="aviso-costo aviso-est">
+        <strong>Ganancia estimada.</strong> Estos perfumes no tienen costo real capturado, por eso se supuso un costo de
+        {{ '%g'|format(pct_estimado) }}% de su precio de venta: {{ estimado_nombres|join(', ') }}.
+        <a href="{{ url_for('admin_inventario') }}">Capturar costo real →</a>
+    </div>
+    {% endif %}
+
+    <div class="tarjetas">
+        <div class="tarjeta"><small>Ingresos por ventas</small><strong>${{ "{:,.2f}".format(resumen['ingresos']) }}</strong></div>
+        <div class="tarjeta"><small>Costo de lo vendido</small><strong>${{ "{:,.2f}".format(resumen['costo']) }}</strong><span>Lo que se pagó al proveedor</span></div>
+        <div class="tarjeta tarjeta-ganancia"><small>Ganancia</small>
+            <strong class="{{ 'neg' if resumen['ganancia'] < 0 else 'pos' }}">{{ '-' if resumen['ganancia'] < 0 }}${{ "{:,.2f}".format(resumen['ganancia']|abs) }}</strong>
+            <span>Margen {{ '%.1f'|format(resumen['margen']) }}%{% if resumen['estimado'] %} · incluye costo estimado{% endif %}</span></div>
+        <div class="tarjeta"><small>Pedidos</small><strong>{{ resumen['pedidos'] }}</strong>
+            {% if resumen['pedidos'] %}<span>Promedio ${{ "{:,.2f}".format(resumen['ingresos'] / resumen['pedidos']) }} por pedido</span>{% endif %}</div>
+        <div class="tarjeta"><small>Perfumes vendidos</small><strong>{{ unidades }}</strong></div>
+        <div class="tarjeta"><small>Más vendido</small>
+            {% if mas_vendido %}<strong>{{ mas_vendido['nombre'] }}</strong><span>{{ mas_vendido['unidades'] }} {{ 'vendido' if mas_vendido['unidades'] == 1 else 'vendidos' }}</span>
+            {% else %}<strong>—</strong><span>Sin ventas</span>{% endif %}</div>
+        <div class="tarjeta"><small>Menos vendido</small>
+            {% if menos_vendido %}<strong>{{ menos_vendido['nombre'] }}</strong>
+                <span>{% if menos_vendido['unidades'] == 0 %}No se vendió{% else %}{{ menos_vendido['unidades'] }} {{ 'vendido' if menos_vendido['unidades'] == 1 else 'vendidos' }}{% endif %}</span>
+            {% else %}<strong>—</strong><span>Sin datos</span>{% endif %}</div>
+        <div class="tarjeta"><small>Más ganancia dejó</small>
+            {% if mas_rentable %}<strong>{{ mas_rentable['nombre'] }}</strong><span>${{ "{:,.2f}".format(mas_rentable['ganancia']) }} de ganancia</span>
+            {% else %}<strong>—</strong><span>Sin ventas</span>{% endif %}</div>
+        <div class="tarjeta"><small>Inventario restante (a costo)</small><strong>${{ "{:,.2f}".format(inv_costo) }}</strong><span>{{ inv_piezas }} {{ 'pieza' if inv_piezas == 1 else 'piezas' }}{% if inv_estimado %} · con estimados{% endif %}</span></div>
+        <div class="tarjeta"><small>{{ 'Mes' if por_mes else 'Día' }} con más ventas</small>
+            {% if mejor %}<strong>{{ mejor['etiqueta'] }}</strong><span>${{ "{:,.2f}".format(mejor['total']) }} · {{ mejor['pedidos'] }} {{ 'pedido' if mejor['pedidos'] == 1 else 'pedidos' }}</span>
+            {% else %}<strong>—</strong><span>Sin ventas</span>{% endif %}</div>
+        <div class="tarjeta"><small>{{ 'Mes' if por_mes else 'Día' }} con menos ventas</small>
+            {% if peor %}<strong>{{ peor['etiqueta'] }}</strong><span>${{ "{:,.2f}".format(peor['total']) }} · {{ peor['pedidos'] }} {{ 'pedido' if peor['pedidos'] == 1 else 'pedidos' }}</span>
+            {% else %}<strong>—</strong><span>Sin datos</span>{% endif %}</div>
+    </div>
+
+    <h3>Perfumes: de más a menos vendido</h3>
+    <div class="caja">
+        {% if ranking %}
+        <table>
+            <thead><tr><th>#</th><th>Perfume</th><th class="num">Vendidos</th><th class="num">Ingresos</th><th class="num">Costo</th><th class="num">Ganancia</th><th></th></tr></thead>
+            <tbody>
+                {% for r in ranking %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ r['nombre'] }}{% if r['marca'] %} <small style="color:var(--muted)">· {{ r['marca'] }}</small>{% endif %}
+                        {% if mas_vendido and loop.first %}<span class="etiqueta top">Más vendido</span>{% endif %}
+                        {% if menos_vendido and loop.last %}<span class="etiqueta low">Menos vendido</span>{% endif %}</td>
+                    <td class="num">{{ r['unidades'] }}</td>
+                    <td class="num">${{ "{:,.2f}".format(r['ingresos']) }}</td>
+                    <td class="num">${{ "{:,.2f}".format(r['costo']) }}</td>
+                    <td class="num {{ 'neg' if r['ganancia'] < 0 else 'pos' }}">{{ '-' if r['ganancia'] < 0 }}${{ "{:,.2f}".format(r['ganancia']|abs) }}{{ ' *' if r['estimado'] }}</td>
+                    <td><div class="barra-fondo"><div class="barra" style="width: {{ r['pct'] }}%"></div></div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="vacio">Todavía no hay perfumes registrados.</p>
+        {% endif %}
+    </div>
+
+    {% if estimado_nombres %}<p class="rango" style="margin-top:10px;">* Ganancia estimada: sin costo real capturado, se supuso un costo de {{ '%g'|format(pct_estimado) }}% del precio de venta.</p>{% endif %}
+
+    <h3>Cuánto deja cada perfume por pieza</h3>
+    <p class="rango" style="margin:0 0 10px;">Con los precios y costos de hoy: ganancia = precio de venta − costo de la próxima pieza que se vende.</p>
+    <div class="caja">
+        {% if por_pieza %}
+        <table>
+            <thead><tr><th>Perfume</th><th class="num">Precio</th><th class="num">Costo</th><th class="num">Ganancia por pieza</th><th class="num">Margen</th><th class="num">En existencia</th><th class="num">Ganancia del inventario</th></tr></thead>
+            <tbody>
+                {% for x in por_pieza %}
+                <tr>
+                    <td>{{ x['nombre'] }}{% if x['marca'] %} <small style="color:var(--muted)">· {{ x['marca'] }}</small>{% endif %}</td>
+                    <td class="num">${{ "{:,.2f}".format(x['precio']) }}</td>
+                    <td class="num">{% if x['costo'] is not none %}${{ "{:,.2f}".format(x['costo']) }}{{ ' *' if x['estimado'] }}{% else %}Sin costo{% endif %}</td>
+                    <td class="num {{ 'neg' if x['ganancia'] is not none and x['ganancia'] < 0 else 'pos' }}">{% if x['ganancia'] is not none %}{{ '-' if x['ganancia'] < 0 }}${{ "{:,.2f}".format(x['ganancia']|abs) }}{{ ' *' if x['estimado'] }}{% else %}—{% endif %}</td>
+                    <td class="num">{% if x['margen'] is not none %}{{ '%.1f'|format(x['margen']) }}%{% else %}—{% endif %}</td>
+                    <td class="num">{{ x['stock'] }}</td>
+                    <td class="num">${{ "{:,.2f}".format(x['ganancia_inv']) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if por_pieza|selectattr('estimado')|list %}<p class="rango" style="margin-top:12px;">* Costo estimado ({{ '%g'|format(pct_estimado) }}% del precio). Captura el costo real en Inventario.</p>{% endif %}
+        {% else %}
+        <p class="vacio">Todavía no hay perfumes registrados.</p>
+        {% endif %}
+    </div>
+
+    <h3>Ventas {{ 'por mes' if por_mes else 'por día' }}</h3>
+    <div class="caja">
+        {% if mejor %}
+        <div class="periodos">
+            {% for x in periodos %}
+            <div class="periodo">
+                <span>{{ x['etiqueta'] }}</span>
+                <div class="barra-fondo"><div class="barra" style="width: {{ x['pct'] }}%"></div></div>
+                <span class="valor">${{ "{:,.2f}".format(x['total']) }} · gan. <b class="{{ 'neg' if x['ganancia'] < 0 else 'pos' }}">{{ '-' if x['ganancia'] < 0 }}${{ "{:,.2f}".format(x['ganancia']|abs) }}</b></span>
+            </div>
+            {% endfor %}
+        </div>
+        {% if sin_ventas %}
+        <p class="rango" style="margin-top:14px;">{{ sin_ventas }} {{ 'mes' if por_mes else 'día' }}{{ 'es' if por_mes and sin_ventas != 1 else ('s' if sin_ventas != 1 else '') }} sin ventas en este periodo.</p>
+        {% endif %}
+        {% else %}
+        <p class="vacio">No hubo ventas en este periodo.</p>
+        {% endif %}
+    </div>
+
+    <a class="volver" href="{{ url_for('admin') }}">← Volver al dashboard</a>
+</div>
+
+{% endblock %}

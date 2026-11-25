@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block content %}<section class="formulario-pagina"><div class="formulario"><h1>Recuperar contraseña</h1><form method="POST"><label>Correo registrado</label><input type="email" name="correo" required><button>Enviar código</button></form><p><a href="{{ url_for('login') }}">Volver al inicio de sesión</a></p></div></section>{% endblock %}

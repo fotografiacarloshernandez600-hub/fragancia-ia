@@ -1,0 +1,46 @@
+{% extends 'admin_base.html' %}{% block admin %}
+<style>
+    .pago-acciones { display: grid; gap: 8px; min-width: 210px; }
+    .pago-acciones form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .pago-acciones input[type=text] { flex: 1; min-width: 120px; padding: 8px 10px; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge.pend { background: #fdf3dc; color: #8a6414; }
+    .badge.rev { background: #e3eefb; color: #1f4f8a; }
+    .badge.mal { background: #fbeeee; color: #9b3b3b; }
+    .btn-ok { background: #25683a; border-color: #25683a; }
+    .btn-mal { background: #fff; color: #9b3b3b; border-color: #c9a0a0; }
+</style>
+<div class="admin-heading"><div><div class="eyebrow">ADMINISTRACIÓN</div><h1>Pedidos</h1><p>Revisa los comprobantes de transferencia, confirma el pago y da seguimiento al envío.</p></div></div>
+<section class="panel table-scroll"><table class="tabla"><thead><tr><th>Folio</th><th>Cliente</th><th>Envío</th><th>Fecha</th><th>Total</th><th>Pago / Estado</th></tr></thead><tbody>
+{% for v in pedidos %}
+<tr>
+<td>#{{ '%04d'|format(v.id) }}</td>
+<td>{{ v.cliente }}<small>{{ v.correo }}</small></td>
+<td>{% if v.envio_nombre %}{{ v.envio_nombre }}<small>{{ v.envio_direccion }}, {{ v.envio_ciudad }}, {{ v.envio_estado }} C.P. {{ v.envio_cp }}</small><small>Tel. {{ v.envio_telefono }} · {{ v.metodo_pago }}</small>{% else %}—{% endif %}</td>
+<td>{{ v.fecha }}</td>
+<td>${{ '{:,.2f}'.format(v.total) }}</td>
+<td>
+{% if v.estado in ['Pendiente de pago', 'Comprobante enviado', 'Pago rechazado'] %}
+  <div class="pago-acciones">
+    {% if v.estado == 'Comprobante enviado' %}<span class="badge rev">🔎 Comprobante por revisar</span>
+    {% elif v.estado == 'Pago rechazado' %}<span class="badge mal">⚠ Pago rechazado</span>{% if v.motivo_rechazo %}<small>Motivo: {{ v.motivo_rechazo }}</small>{% endif %}
+    {% else %}<span class="badge pend">💳 Esperando pago</span>{% endif %}
+    {% if v.comprobante %}<a href="{{ url_for('ver_comprobante', id=v.id) }}" target="_blank" rel="noopener"><strong>Ver comprobante ↗</strong></a><small>Enviado: {{ v.comprobante_fecha }}</small>{% endif %}
+    <form method="post" action="{{ url_for('admin_confirmar_pago', id=v.id) }}" onsubmit="return confirm('¿Confirmas que el pago del pedido #{{ v.id }} ya llegó a tu cuenta?');"><button class="btn btn-small btn-ok">✓ Confirmar pago</button></form>
+    {% if v.estado == 'Comprobante enviado' %}
+    <form method="post" action="{{ url_for('admin_rechazar_pago', id=v.id) }}"><input type="text" name="motivo" maxlength="300" placeholder="Motivo del rechazo" required><button class="btn btn-small btn-mal">Rechazar</button></form>
+    {% endif %}
+    <form method="post" action="{{ url_for('admin_cancelar_pedido', id=v.id) }}" onsubmit="return confirm('¿Cancelar el pedido #{{ v.id }} y devolver las piezas al inventario?');"><button class="btn btn-small btn-mal">Cancelar pedido</button></form>
+  </div>
+{% elif v.estado == 'Cancelado' %}
+  <span class="badge mal">✕ Cancelado</span>{% if v.motivo_rechazo %}<small>{{ v.motivo_rechazo }}</small>{% endif %}
+{% elif v.estado == 'Recibido' %}
+  <strong>✓ Recibido por el cliente</strong>{% if v.comprobante %}<small><a href="{{ url_for('ver_comprobante', id=v.id) }}" target="_blank" rel="noopener">Ver comprobante ↗</a></small>{% endif %}
+{% else %}
+  <form class="inline-form" method="post" action="{{ url_for('actualizar_estado',id=v.id) }}"><select name="estado">{% for e in ['En proceso','En camino','Entregado'] %}<option value="{{ e }}" {{ 'selected' if v.estado==e }}>{{ e }}</option>{% endfor %}</select><button class="btn btn-small">Guardar</button></form>
+  {% if v.comprobante %}<small><a href="{{ url_for('ver_comprobante', id=v.id) }}" target="_blank" rel="noopener">Ver comprobante ↗</a> · pago confirmado</small>{% endif %}
+{% endif %}
+</td>
+</tr>
+{% else %}<tr><td colspan="6">Sin pedidos todavía.</td></tr>{% endfor %}
+</tbody></table></section>{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .cantidad-control { display: inline-flex; align-items: center; gap: 10px; }
+    .cantidad-control form { margin: 0; }
+    .cant-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
+    .cant-btn:hover:not(:disabled) { border-color: var(--rose); color: var(--rose); }
+    .cant-btn:disabled { opacity: .35; cursor: not-allowed; }
+    .cant-num { min-width: 22px; text-align: center; font-weight: 600; }
+</style>
+
+<header class="portada portada-mini">
+    {% include "_menu.html" %}
+    <h1 class="logo">FRAG-IA</h1>
+</header>
+
+<section class="catalogo">
+    <h2>MI CARRITO</h2>
+
+    {% if items %}
+    <table class="tabla tabla-carrito">
+        <thead>
+            <tr>
+                <th>Perfume</th>
+                <th>Precio</th>
+                <th>Cantidad</th>
+                <th>Subtotal</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for i in items %}
+            <tr>
+                <td>{{ i['perfume']['nombre'] }}</td>
+                <td>${{ "{:,.2f}".format(i['perfume']['precio']) }}</td>
+                <td>
+                    <div class="cantidad-control">
+                        <form method="POST" action="{{ url_for('carrito_cantidad', id=i['perfume']['id']) }}">
+                            <input type="hidden" name="accion" value="menos">
+                            <button type="submit" class="cant-btn" aria-label="Quitar una unidad" {% if i['cantidad'] <= 1 %}disabled{% endif %}>−</button>
+                        </form>
+                        <span class="cant-num">{{ i['cantidad'] }}</span>
+                        <form method="POST" action="{{ url_for('carrito_cantidad', id=i['perfume']['id']) }}">
+                            <input type="hidden" name="accion" value="mas">
+                            <button type="submit" class="cant-btn" aria-label="Agregar una unidad" {% if i['cantidad'] >= i['perfume']['stock'] %}disabled{% endif %}>+</button>
+                        </form>
+                    </div>
+                </td>
+                <td>${{ "{:,.2f}".format(i['subtotal']) }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('carrito_quitar', id=i['perfume']['id']) }}">
+                        <button type="submit" class="btn-borrar">Quitar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p class="total">Total: ${{ "{:,.2f}".format(total) }}</p>
+
+    <a class="btn" href="{{ url_for('checkout') }}">Continuar con la compra</a>
+    {% else %}
+        <p>Tu carrito está vacío.</p>
+        <p><a class="btn" href="{{ url_for('catalogo') }}">Ver catálogo</a></p>
+    {% endif %}
+</section>
+
+{% endblock %}
